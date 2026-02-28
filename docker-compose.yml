@@ -1,62 +1,26 @@
 # ==========================================================
-# docker-compose.yml — Filla SaaS + Traefik
+# docker-compose.yml — Filla SaaS
+# Adaptado para Docker Swarm + Traefik existente (rede: ariun)
 # ==========================================================
-# ANTES DE USAR:
-#   1. Substitua os domínios abaixo pelo seu domínio real
-#   2. Altere o e-mail no traefik/traefik.yml
-#   3. Crie a rede externa (apenas 1ª vez):
-#        docker network create traefik-net
-#   4. Suba com:
-#        docker compose up -d --build
+# Deploy via Portainer (Stacks) ou:
+#   docker stack deploy -c docker-compose.yml filla
 # ==========================================================
+# ⚠️  ALTERE os domínios antes de fazer deploy:
+#   filla.seudominio.com.br    → domínio do frontend
+#   api.filla.seudominio.com.br → domínio da API
 
-# Domínios configuráveis — ajuste aqui
-x-domains:
-  frontend: &FRONTEND_DOMAIN "filla.seudominio.com" # ← ALTERE
-  backend: &BACKEND_DOMAIN "api.filla.seudominio.com" # ← ALTERE
-
-version: '3.8'
+version: "3.7"
 
 services:
-
-  # ──────────────────────────────────────────────────────
-  # Traefik — Reverse Proxy + TLS automático
-  # ──────────────────────────────────────────────────────
-  traefik:
-    image: traefik:v3.1
-    container_name: filla_traefik
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    command:
-      - --configFile=/etc/traefik/traefik.yml
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # leitura automática dos containers
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/acme.json:/letsencrypt/acme.json # certificados TLS persistidos
-    networks:
-      - traefik-net
-    labels:
-      - "traefik.enable=true"
-      # Dashboard Traefik (proteja em produção com BasicAuth ou IP whitelist)
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.filla.seudominio.com`)"
-      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik-dashboard.service=api@internal"
 
   # ──────────────────────────────────────────────────────
   # Backend — NestJS API (REST + WebSocket Socket.IO)
   # ──────────────────────────────────────────────────────
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: filla_backend
-    restart: unless-stopped
-    # Sem `ports:` — o acesso externo é exclusivamente via Traefik
-    depends_on:
-      - database
+    image: ghcr.io/dervolpe/filla-backend:latest
+    # Ou: build: { context: ./backend }  (se buildar local)
+    networks:
+      - ariun
     environment:
       PORT: 3000
       DB_HOST: ${DB_HOST:-162.241.203.236}
@@ -64,82 +28,56 @@ services:
       DB_USER: ${DB_USER:-previd39_filla_saas}
       DB_PASS: ${DB_PASS:-T0l3r@nc1@}
       DB_NAME: ${DB_NAME:-previd39_filla_saas}
-    networks:
-      - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik-net"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=ariun"
 
-      # ── Roteador principal da API (HTTPS) ──
-      - "traefik.http.routers.filla-api.rule=Host(`api.filla.seudominio.com`)"
-      - "traefik.http.routers.filla-api.entrypoints=websecure"
-      - "traefik.http.routers.filla-api.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.filla-api.service=filla-api-svc"
+        ## Roteador HTTPS da API
+        - "traefik.http.routers.filla-api.rule=Host(`api.filla.seudominio.com.br`)"
+        - "traefik.http.routers.filla-api.entrypoints=websecure"
+        - "traefik.http.routers.filla-api.tls=true"
+        - "traefik.http.routers.filla-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.filla-api.service=filla-api-svc"
+        - "traefik.http.routers.filla-api.priority=10"
 
-      # ── Serviço apontando para a porta interna do NestJS ──
-      - "traefik.http.services.filla-api-svc.loadbalancer.server.port=3000"
+        ## Serviço → porta interna do NestJS
+        - "traefik.http.services.filla-api-svc.loadbalancer.server.port=3000"
 
-      # ── Suporte a WebSocket (Socket.IO) ──
-      # Traefik v3 detecta automaticamente WebSocket, mas garantimos os timeouts:
-      - "traefik.http.middlewares.filla-ws.headers.customrequestheaders.Connection=Upgrade"
-      - "traefik.http.middlewares.filla-ws.headers.customrequestheaders.Upgrade=websocket"
-      - "traefik.http.routers.filla-api.middlewares=filla-ws"
+        ## WebSocket: aumenta timeout para Socket.IO funcionar
+        - "traefik.http.services.filla-api-svc.loadbalancer.sticky.cookie=true"
 
   # ──────────────────────────────────────────────────────
   # Frontend — Vue 3 via Nginx
   # ──────────────────────────────────────────────────────
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        # Injeta a URL da API no build do Vite para que o frontend aponte para a API correta
-        VITE_API_URL: "https://api.filla.seudominio.com"
-    container_name: filla_frontend
-    restart: unless-stopped
-    # Sem `ports:` — acesso via Traefik
-    depends_on:
-      - backend
+    image: ghcr.io/dervolpe/filla-frontend:latest
+    # Ou: build: { context: ./frontend }  (se buildar local)
     networks:
-      - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik-net"
+      - ariun
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=ariun"
 
-      # ── Roteador principal do frontend (HTTPS) ──
-      - "traefik.http.routers.filla-app.rule=Host(`filla.seudominio.com`)"
-      - "traefik.http.routers.filla-app.entrypoints=websecure"
-      - "traefik.http.routers.filla-app.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.filla-app.service=filla-app-svc"
+        ## Roteador HTTPS do frontend
+        - "traefik.http.routers.filla-app.rule=Host(`filla.seudominio.com.br`)"
+        - "traefik.http.routers.filla-app.entrypoints=websecure"
+        - "traefik.http.routers.filla-app.tls=true"
+        - "traefik.http.routers.filla-app.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.filla-app.service=filla-app-svc"
+        - "traefik.http.routers.filla-app.priority=10"
 
-      # ── Serviço apontando para porta 80 do Nginx ──
-      - "traefik.http.services.filla-app-svc.loadbalancer.server.port=80"
-
-  # ──────────────────────────────────────────────────────
-  # Database — MySQL local (opcional, já existe host externo)
-  # Para ativar: descomente e ajuste DB_HOST para "database"
-  # ──────────────────────────────────────────────────────
-  database:
-    image: mysql:8.0
-    container_name: filla_db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secure_pass}
-      MYSQL_DATABASE: ${DB_NAME:-previd39_filla_saas}
-      MYSQL_USER: ${DB_USER:-previd39_filla_saas}
-      MYSQL_PASSWORD: ${DB_PASS:-T0l3r@nc1@}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - traefik-net
-    # Não expõe porta externamente — só interno ao stack
-    expose:
-      - "3306"
-
-volumes:
-  mysql_data:
-
+        ## Serviço → porta 80 do Nginx
+        - "traefik.http.services.filla-app-svc.loadbalancer.server.port=80"
 
 networks:
-  traefik-net:
-    external: true # Rede criada manualmente: `docker network create traefik-net`
+  ariun:
+    external: true
+    name: ariun
