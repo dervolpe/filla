@@ -1,0 +1,32 @@
+api:
+  dashboard: true
+  insecure: false   # Desabilita dashboard sem TLS
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false   # Só expõe containers com label traefik.enable=true
+    network: traefik-net
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "seu-email@dominio.com"       # ← ALTERE para seu e-mail real
+      storage: /letsencrypt/acme.json
+      tlsChallenge: {}
+
+log:
+  level: INFO

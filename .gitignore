@@ -1,0 +1,28 @@
+# Filla SaaS — .gitignore
+
+# Variáveis de ambiente com credenciais NUNCA devem ser commitadas
+.env
+
+# Certificados TLS do Traefik (gerados automaticamente pelo Let's Encrypt)
+traefik/acme.json
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+.next/
+
+# NestJS compiled
+backend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
