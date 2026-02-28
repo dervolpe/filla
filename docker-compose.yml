@@ -23,11 +23,11 @@ services:
       - ariun
     environment:
       PORT: 3000
-      DB_HOST: ${DB_HOST:-162.241.203.236}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_USER: ${DB_USER:-previd39_filla_saas}
-      DB_PASS: ${DB_PASS:-T0l3r@nc1@}
-      DB_NAME: ${DB_NAME:-previd39_filla_saas}
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-filla_user}
+      DB_PASS: ${DB_PASS:-filla_pass}
+      DB_NAME: ${DB_NAME:-filla_saas}
     deploy:
       replicas: 1
       restart_policy:
@@ -76,6 +76,32 @@ services:
 
         ## Serviço → porta 80 do Nginx
         - "traefik.http.services.filla-app-svc.loadbalancer.server.port=80"
+
+  # ──────────────────────────────────────────────────────
+  # Database — MySQL 8 local
+  # ──────────────────────────────────────────────────────
+  database:
+    image: mysql:8.0
+    networks:
+      - ariun
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secure_pass}
+      MYSQL_DATABASE: ${DB_NAME:-filla_saas}
+      MYSQL_USER: ${DB_USER:-filla_user}
+      MYSQL_PASSWORD: ${DB_PASS:-filla_pass}
+    volumes:
+      - filla_mysql_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager # banco sempre no nó manager (dados persistidos)
+
+volumes:
+  filla_mysql_data:
+    driver: local
 
 networks:
   ariun:
