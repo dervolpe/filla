@@ -5,12 +5,13 @@ import { Servico } from './entities/servico.entity';
 import { Usuario } from './entities/usuario.entity';
 import { Guiche } from './entities/guiche.entity';
 import { PainelConfig } from './entities/painel-config.entity';
+import { Local } from './entities/local.entity';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { Atendimento } from '../atendimento/entities/atendimento.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Departamento, Servico, Usuario, Guiche, Atendimento, PainelConfig])],
+    imports: [TypeOrmModule.forFeature([Departamento, Servico, Usuario, Guiche, Atendimento, PainelConfig, Local])],
     controllers: [AdminController],
     providers: [AdminService],
 })

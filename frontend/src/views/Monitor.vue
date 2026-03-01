@@ -259,8 +259,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { io } from 'socket.io-client';
 import { API_BASE, SOCKET_URL } from '@/config.js';
+
+const route = useRoute();
+const localId = route.query.localId || null;
 
 // ---- State ----
 const isConnected = ref(false);
@@ -469,6 +473,10 @@ const setupSocketConnection = () => {
   socket.on('connect', () => {
     isConnected.value = true;
     socket.emit('joinCompanyRoom', { companyId: COMPANY_ID });
+    // Entra também na sala do local específico (se configurado)
+    if (localId) {
+      socket.emit('joinLocalRoom', { localId });
+    }
   });
 
   socket.on('disconnect', () => {
@@ -476,9 +484,12 @@ const setupSocketConnection = () => {
   });
 
   socket.on('senhaChamada', (atendimentoPayload) => {
+    // Filtra evento: só processa se for do mesmo local (ou se não há filtro de local)
+    if (localId && atendimentoPayload.localId && atendimentoPayload.localId !== localId) return;
+
     if (senhaAtual.value) {
       historico.value.unshift(senhaAtual.value);
-      if (historico.value.length > 5) historico.value.pop(); 
+      if (historico.value.length > 5) historico.value.pop();
     }
     senhaAtual.value = atendimentoPayload;
     alertarSenha();

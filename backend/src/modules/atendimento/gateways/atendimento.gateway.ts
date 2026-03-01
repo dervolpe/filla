@@ -47,15 +47,36 @@ export class AtendimentoGateway implements OnGatewayConnection, OnGatewayDisconn
     }
 
     /**
+     * Permite que clientes entrem na sala de um local específico.
+     * Usado pelo Monitor e Atendente quando localId está presente na URL.
+     */
+    @SubscribeMessage('joinLocalRoom')
+    handleJoinLocalRoom(
+        @ConnectedSocket() client: Socket,
+        @MessageBody() payload: { localId: string },
+    ) {
+        const room = `local_${payload.localId}`;
+        client.join(room);
+        this.logger.log(`Cliente ${client.id} entrou na sala ${room}`);
+        return { event: 'joined', room };
+    }
+
+    /**
      * Internal Method to be used by the AtendimentoService.
      * Dispatches the called ticket event uniquely isolated by CompanyID.
+     * Also emits to the local room if the ticket has a localId.
      */
     emitirSenhaChamada(companyId: string, atendimento: Partial<Atendimento>, guiche: string) {
-        const room = `company_${companyId}`;
-
         const payload = { ...atendimento, guiche };
-        this.server.to(room).emit('senhaChamada', payload);
 
-        this.logger.log(`Senha chamada emitida para a sala ${room}: ${atendimento.senha}`);
+        // Emite para sala da empresa (todos os monitors)
+        this.server.to(`company_${companyId}`).emit('senhaChamada', payload);
+
+        // Emite também para sala do local (monitor filtrado por local)
+        if ((atendimento as any).localId) {
+            this.server.to(`local_${(atendimento as any).localId}`).emit('senhaChamada', payload);
+        }
+
+        this.logger.log(`Senha chamada emitida: ${atendimento.senha} (company: ${companyId}, local: ${(atendimento as any).localId || 'n/a'})`);
     }
 }

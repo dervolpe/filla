@@ -13,6 +13,7 @@ import { Usuario } from './modules/admin/entities/usuario.entity';
 import { Guiche } from './modules/admin/entities/guiche.entity';
 import { AuthModule } from './modules/auth/auth.module';
 import { PainelConfig } from './modules/admin/entities/painel-config.entity';
+import { Local } from './modules/admin/entities/local.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { PainelConfig } from './modules/admin/entities/painel-config.entity';
       username: process.env.DB_USER || 'previd39_filla_saas',
       password: process.env.DB_PASS || 'T0l3r@nc1@',
       database: process.env.DB_NAME || 'previd39_filla_saas',
-      entities: [Atendimento, Departamento, Servico, Usuario, Guiche, PainelConfig],
+      entities: [Atendimento, Departamento, Servico, Usuario, Guiche, PainelConfig, Local],
       synchronize: true, // Auto-create tables on Dev. (Turn off for Prod!)
     }),
     AtendimentoModule,

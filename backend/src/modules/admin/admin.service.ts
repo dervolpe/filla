@@ -7,6 +7,7 @@ import { Servico } from './entities/servico.entity';
 import { Usuario } from './entities/usuario.entity';
 import { Guiche } from './entities/guiche.entity';
 import { PainelConfig } from './entities/painel-config.entity';
+import { Local } from './entities/local.entity';
 import { Atendimento, AtendimentoStatus } from '../atendimento/entities/atendimento.entity';
 
 @Injectable()
@@ -23,8 +24,28 @@ export class AdminService {
         @InjectRepository(Atendimento)
         private atendimentoRepo: Repository<Atendimento>,
         @InjectRepository(PainelConfig)
-        private painelConfigRepo: Repository<PainelConfig>
+        private painelConfigRepo: Repository<PainelConfig>,
+        @InjectRepository(Local)
+        private localRepo: Repository<Local>
     ) { }
+
+    // ─── LOCAIS CRUD ───────────────────────────────────────────
+    async listarLocais(companyId: string): Promise<Local[]> {
+        return this.localRepo.find({ where: { companyId, ativo: true } });
+    }
+
+    async criarLocal(companyId: string, data: Partial<Local>): Promise<Local> {
+        return this.localRepo.save(this.localRepo.create({ ...data, companyId }));
+    }
+
+    async atualizarLocal(companyId: string, id: string, data: Partial<Local>): Promise<Local | null> {
+        await this.localRepo.update({ id, companyId }, data);
+        return this.localRepo.findOne({ where: { id, companyId } });
+    }
+
+    async excluirLocal(companyId: string, id: string): Promise<void> {
+        await this.localRepo.update({ id, companyId }, { ativo: false });
+    }
 
     async obterPainelConfig(companyId: string): Promise<PainelConfig> {
         let config = await this.painelConfigRepo.findOne({ where: { companyId } });

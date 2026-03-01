@@ -6,10 +6,11 @@ import { Atendimento } from '../atendimento/entities/atendimento.entity';
 import { AtendimentoModule } from '../atendimento/atendimento.module';
 
 import { Servico } from '../admin/entities/servico.entity';
+import { Local } from '../admin/entities/local.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Atendimento, Servico]),
+        TypeOrmModule.forFeature([Atendimento, Servico, Local]),
         AtendimentoModule // Para podermos emitir o websocket após a triagem, caso necessário
     ],
     controllers: [TriagemController],

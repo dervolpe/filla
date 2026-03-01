@@ -120,4 +120,27 @@ export class AdminController {
     async salvarPainelConfig(@Body() body: any) {
         return this.adminService.salvarPainelConfig(this.MOCK_COMPANY_ID, body);
     }
+
+    // --- Locais (filiais/unidades) ---
+
+    @Get('locais')
+    async getLocais() {
+        return this.adminService.listarLocais(this.MOCK_COMPANY_ID);
+    }
+
+    @Post('locais')
+    async criarLocal(@Body() body: any) {
+        return this.adminService.criarLocal(this.MOCK_COMPANY_ID, body);
+    }
+
+    @Put('locais/:id')
+    async atualizarLocal(@Param('id') id: string, @Body() body: any) {
+        return this.adminService.atualizarLocal(this.MOCK_COMPANY_ID, id, body);
+    }
+
+    @Delete('locais/:id')
+    async excluirLocal(@Param('id') id: string) {
+        await this.adminService.excluirLocal(this.MOCK_COMPANY_ID, id);
+        return { ok: true };
+    }
 }

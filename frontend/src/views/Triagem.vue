@@ -109,8 +109,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { API_BASE } from '@/config.js';
 
+const route = useRoute();
+const localId = route.query.localId || null;
 const COMPANY_ID = 'e2b102b4-3a55-4abc-8e54-526279fcc4b9';
 
 const step = ref('servico'); // 'servico' | 'prioridade'
@@ -123,10 +126,12 @@ const ticketEmitido = ref(null);
 const carregarServicos = async () => {
   loadingServicos.value = true;
   try {
-    const res = await fetch(`${API_BASE}/admin/servicos?companyId=${COMPANY_ID}`);
-    if (res.ok) {
-      servicos.value = await res.json();
-    }
+    // Usa o novo endpoint de triagem que filtra por local
+    const url = localId
+      ? `${API_BASE}/triagem/servicos?localId=${localId}`
+      : `${API_BASE}/admin/servicos?companyId=${COMPANY_ID}`;
+    const res = await fetch(url);
+    if (res.ok) servicos.value = await res.json();
   } catch (e) {
     console.error('Erro ao carregar serviços', e);
   } finally {
@@ -147,7 +152,6 @@ const voltarParaServicos = () => {
 const gerarSenha = async (prioridade) => {
   if (loading.value || !servicoSelecionado.value) return;
   loading.value = true;
-  
   try {
     const response = await fetch(API_BASE + '/triagem/gerar', {
       method: 'POST',
@@ -156,17 +160,14 @@ const gerarSenha = async (prioridade) => {
         companyId: COMPANY_ID,
         servicoId: servicoSelecionado.value.id,
         prioridade,
+        localId: localId || undefined,   // envia localId se disponível
       })
     });
-
     if (response.ok) {
       const data = await response.json();
       ticketEmitido.value = data;
-      
-      // Auto-esconde modal após 5s
       setTimeout(() => {
         ticketEmitido.value = null;
-        // Volta ao Step 1 para próximo cliente
         step.value = 'servico';
         servicoSelecionado.value = null;
       }, 5000);

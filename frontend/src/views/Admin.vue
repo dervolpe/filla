@@ -30,6 +30,11 @@
           Guichês
         </a>
 
+        <a href="#" @click.prevent="aba = 'locais'" :class="aba === 'locais' ? 'bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          Locais / Unidades
+        </a>
+
         <!-- Divisor -->
         <div class="pt-2 pb-1 px-2">
           <span class="text-xs text-slate-600 uppercase tracking-widest font-semibold">Configurações</span>
@@ -115,6 +120,102 @@
                      :options="{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }" 
                   />
                </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======================== -->
+        <!--  ABA: LOCAIS / UNIDADES  -->
+        <!-- ======================== -->
+        <section v-else-if="aba === 'locais'" class="space-y-6">
+
+          <!-- Formulário novo/editar local -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">{{ editandoLocal?.id ? '✏️ Editar Local' : '➕ Novo Local' }}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Nome *</label>
+                <input v-model="(editandoLocal || novoLocal).nome" class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" placeholder="Ex: Unidade Centro" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Descrição</label>
+                <input v-model="(editandoLocal || novoLocal).descricao" class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" placeholder="Ex: Atendimento Geral da Filial Centro" />
+              </div>
+            </div>
+            <!-- Selecionar serviços habilitados -->
+            <div class="mt-4">
+              <label class="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Serviços habilitados neste local</label>
+              <div class="flex flex-wrap gap-3">
+                <label
+                  v-for="srv in data.servicos" :key="srv.id"
+                  class="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm hover:border-indigo-400 transition-all"
+                  :class="{ 'border-indigo-500 bg-indigo-50 text-indigo-800 font-semibold': (editandoLocal || novoLocal).servicosIds?.includes(srv.id) }"
+                >
+                  <input
+                    type="checkbox"
+                    class="accent-indigo-600"
+                    :checked="(editandoLocal || novoLocal).servicosIds?.includes(srv.id)"
+                    @change="toggleServico(editandoLocal || novoLocal, srv.id)"
+                  />
+                  {{ srv.nome }}
+                </label>
+              </div>
+            </div>
+            <!-- Ações -->
+            <div class="flex gap-3 mt-5">
+              <button @click="salvarLocal" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                {{ editandoLocal?.id ? 'Salvar Alterações' : 'Criar Local' }}
+              </button>
+              <button v-if="editandoLocal" @click="cancelarEdicaoLocal" class="border border-slate-300 text-slate-600 hover:bg-slate-100 font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+
+          <!-- Lista de locais -->
+          <div v-if="loadingLocais" class="text-center text-slate-400 py-10">Carregando locais...</div>
+
+          <div v-else-if="locais.length === 0" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-10 text-center text-slate-400">
+            Nenhum local cadastrado ainda. Crie o primeiro acima!
+          </div>
+
+          <div v-for="local in locais" :key="local.id" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+            <div class="flex flex-wrap justify-between items-start gap-4 mb-4">
+              <div>
+                <h3 class="text-xl font-bold text-slate-800">{{ local.nome }}</h3>
+                <p class="text-sm text-slate-500">{{ local.descricao }}</p>
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <span
+                    v-for="srvId in (local.servicosIds || [])" :key="srvId"
+                    class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 font-medium"
+                  >
+                    {{ data.servicos.find(s => s.id === srvId)?.nome || srvId }}
+                  </span>
+                  <span v-if="!local.servicosIds?.length" class="text-xs text-slate-400 italic">Nenhum serviço habilitado</span>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button @click="editarLocal(local)" class="border border-slate-200 text-slate-600 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl text-sm transition-colors">Editar</button>
+                <button @click="excluirLocal(local.id)" class="bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-semibold px-4 py-2 rounded-xl text-sm transition-colors">Excluir</button>
+              </div>
+            </div>
+            <!-- URLs para copiar -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+              <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">🖥️ Monitor</p>
+                <p class="text-xs text-slate-600 font-mono truncate">{{ frontendUrl }}/monitor?localId={{ local.id }}</p>
+                <button @click="copiarUrl(`${frontendUrl}/monitor?localId=${local.id}`)" class="mt-2 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors w-full">Copiar URL</button>
+              </div>
+              <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">🎟️ Totem / Triagem</p>
+                <p class="text-xs text-slate-600 font-mono truncate">{{ frontendUrl }}/triagem?localId={{ local.id }}</p>
+                <button @click="copiarUrl(`${frontendUrl}/triagem?localId=${local.id}`)" class="mt-2 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors w-full">Copiar URL</button>
+              </div>
+              <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">👨‍💼 Atendente</p>
+                <p class="text-xs text-slate-600 font-mono truncate">{{ frontendUrl }}/atendente?localId={{ local.id }}</p>
+                <button @click="copiarUrl(`${frontendUrl}/atendente?localId=${local.id}`)" class="mt-2 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors w-full">Copiar URL</button>
+              </div>
             </div>
           </div>
         </section>
@@ -602,7 +703,79 @@ const salvarPainelConfig = async () => {
 // Carrega painel config quando o usuário navega para a aba painel
 watch(aba, (val) => {
   if (val === 'painel') fetchPainelConfig();
+  if (val === 'locais') fetchLocais();
 });
+
+// ==============================
+// Locais CRUD
+// ==============================
+const locais = ref([]);
+const novoLocal = ref({ nome: '', descricao: '', servicosIds: [] });
+const editandoLocal = ref(null); // null = criando, objeto = editando
+const loadingLocais = ref(false);
+const frontendUrl = window.location.origin;
+
+const fetchLocais = async () => {
+  loadingLocais.value = true;
+  try {
+    const res = await fetch(API_BASE + '/admin/locais');
+    if (res.ok) locais.value = await res.json();
+  } finally {
+    loadingLocais.value = false;
+  }
+};
+
+const salvarLocal = async () => {
+  const payload = editandoLocal.value
+    ? { ...editandoLocal.value }
+    : { ...novoLocal.value };
+  try {
+    let res;
+    if (editandoLocal.value?.id) {
+      res = await fetch(`${API_BASE}/admin/locais/${editandoLocal.value.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch(API_BASE + '/admin/locais', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+    if (res.ok) {
+      await fetchLocais();
+      novoLocal.value = { nome: '', descricao: '', servicosIds: [] };
+      editandoLocal.value = null;
+    }
+  } catch(e) { console.error(e); }
+};
+
+const editarLocal = (local) => {
+  editandoLocal.value = { ...local, servicosIds: [...(local.servicosIds || [])] };
+};
+
+const cancelarEdicaoLocal = () => {
+  editandoLocal.value = null;
+  novoLocal.value = { nome: '', descricao: '', servicosIds: [] };
+};
+
+const excluirLocal = async (id) => {
+  if (!confirm('Excluir este local?')) return;
+  await fetch(`${API_BASE}/admin/locais/${id}`, { method: 'DELETE' });
+  await fetchLocais();
+};
+
+const copiarUrl = (texto) => {
+  navigator.clipboard.writeText(texto);
+  alert('URL copiada!');
+};
+
+const toggleServico = (form, servicoId) => {
+  if (!form.servicosIds) form.servicosIds = [];
+  const idx = form.servicosIds.indexOf(servicoId);
+  if (idx === -1) form.servicosIds.push(servicoId);
+  else form.servicosIds.splice(idx, 1);
+};
 
 // ==============================
 // Fetch data & CRUD

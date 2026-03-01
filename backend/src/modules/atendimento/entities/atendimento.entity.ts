@@ -70,6 +70,9 @@ export class Atendimento {
     @Column({ name: 'departamento_id', type: 'uuid', nullable: true })
     departamentoId: string;
 
+    @Column({ name: 'local_id', type: 'uuid', nullable: true })
+    localId: string;
+
     @Column({ name: 'atendente_id', type: 'uuid', nullable: true })
     atendenteId: string;
 
