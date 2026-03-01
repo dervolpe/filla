@@ -15,5 +15,6 @@ import { Local } from '../admin/entities/local.entity';
     ],
     controllers: [TriagemController],
     providers: [TriagemService],
+    exports: [TriagemService],
 })
 export class TriagemModule { }

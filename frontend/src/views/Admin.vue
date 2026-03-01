@@ -44,6 +44,11 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
           Painel Monitor
         </a>
+
+        <a href="#" @click.prevent="aba = 'apikeys'" :class="aba === 'apikeys' ? 'bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+          API Keys
+        </a>
       </nav>
       
       <div @click="logout" class="p-6 border-t border-slate-800 text-sm flex gap-3 items-center cursor-pointer hover:bg-rose-900/40 transition-colors group">
@@ -216,6 +221,79 @@
                 <p class="text-xs text-slate-600 font-mono truncate">{{ frontendUrl }}/atendente?localId={{ local.id }}</p>
                 <button @click="copiarUrl(`${frontendUrl}/atendente?localId=${local.id}`)" class="mt-2 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors w-full">Copiar URL</button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======================== -->
+        <!--  ABA: API KEYS           -->
+        <!-- ======================== -->
+        <section v-else-if="aba === 'apikeys'" class="space-y-6 max-w-4xl">
+
+          <!-- Alerta de chave criada (mostrada 1x) -->
+          <div v-if="novaChaveGerada" class="bg-emerald-50 border-2 border-emerald-400 rounded-3xl p-6">
+            <h3 class="text-emerald-800 font-bold text-lg mb-2">✅ Chave criada! Guarde-a agora.</h3>
+            <p class="text-emerald-700 text-sm mb-3">Esta chave <strong>não será exibida novamente</strong>. Copie e armazene em local seguro.</p>
+            <div class="flex items-center gap-3 bg-white border border-emerald-300 rounded-xl px-4 py-3">
+              <code class="flex-1 text-sm font-mono text-slate-700 break-all">{{ novaChaveGerada }}</code>
+              <button @click="copiarUrl(novaChaveGerada)" class="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg shrink-0 hover:bg-emerald-700 transition-colors">Copiar</button>
+            </div>
+            <button @click="novaChaveGerada = null" class="mt-3 text-xs text-emerald-600 underline">Fechar</button>
+          </div>
+
+          <!-- Formulário nova chave -->
+          <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">🔑 Nova API Key</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Nome / Identificação *</label>
+                <input v-model="novaKey.nome" class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none" placeholder="Ex: App Mobile, Totem Loja 1" />
+              </div>
+            </div>
+            <div class="mb-4">
+              <label class="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Permissões</label>
+              <div class="flex flex-wrap gap-3">
+                <label v-for="perm in permissoesDisponiveis" :key="perm.value" class="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm hover:border-indigo-400 transition-all" :class="{ 'border-indigo-500 bg-indigo-50 text-indigo-800 font-semibold': novaKey.permissoes.includes(perm.value) }">
+                  <input type="checkbox" class="accent-indigo-600" :checked="novaKey.permissoes.includes(perm.value)" @change="togglePermissao(perm.value)" />
+                  <span>{{ perm.label }}</span>
+                </label>
+              </div>
+            </div>
+            <button @click="criarApiKey" :disabled="!novaKey.nome" class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">Gerar Chave</button>
+          </div>
+
+          <!-- Uso da API -->
+          <div class="bg-slate-800 text-white rounded-3xl p-6">
+            <h3 class="font-bold text-slate-300 text-sm uppercase tracking-wider mb-3">📖 Como usar</h3>
+            <pre class="text-xs text-emerald-400 overflow-x-auto whitespace-pre-wrap">curl -X POST https://api.filla.ariun.tec.br/v1/senhas \
+  -H "X-API-Key: filla_sua_chave_aqui" \
+  -H "Content-Type: application/json" \
+  -d '{"servicoId": "uuid", "prioridade": "NORMAL"}'
+
+# Verificar fila
+curl https://api.filla.ariun.tec.br/v1/fila/status \
+  -H "X-API-Key: filla_sua_chave_aqui"</pre>
+          </div>
+
+          <!-- Lista de chaves -->
+          <div v-if="loadingKeys" class="text-center text-slate-400 py-8">Carregando...</div>
+          <div v-else-if="apiKeys.length === 0" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-10 text-center text-slate-400">Nenhuma API Key criada ainda.</div>
+          <div v-for="key in apiKeys" :key="key.id" class="bg-white rounded-3xl shadow-sm border border-slate-100 p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-bold text-slate-800">{{ key.nome }}</span>
+                <span v-if="key.ativo" class="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">Ativa</span>
+                <span v-else class="text-xs bg-red-100 text-red-600 border border-red-200 px-2 py-0.5 rounded-full font-semibold">Revogada</span>
+              </div>
+              <code class="text-xs text-slate-500 font-mono">{{ key.chave }}</code>
+              <div class="flex flex-wrap gap-1 mt-2">
+                <span v-for="p in (key.permissoes || [])" :key="p" class="text-xs bg-slate-100 text-slate-600 rounded-full px-2 py-0.5">{{ p }}</span>
+              </div>
+              <p v-if="key.ultimoUsoEm" class="text-xs text-slate-400 mt-1">Último uso: {{ new Date(key.ultimoUsoEm).toLocaleString('pt-BR') }}</p>
+            </div>
+            <div class="flex gap-2">
+              <button v-if="key.ativo" @click="revogarKey(key.id)" class="bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 font-semibold px-4 py-2 rounded-xl text-sm transition-colors">Revogar</button>
+              <button v-else @click="reativarKey(key.id)" class="bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 font-semibold px-4 py-2 rounded-xl text-sm transition-colors">Reativar</button>
             </div>
           </div>
         </section>
@@ -704,6 +782,7 @@ const salvarPainelConfig = async () => {
 watch(aba, (val) => {
   if (val === 'painel') fetchPainelConfig();
   if (val === 'locais') fetchLocais();
+  if (val === 'apikeys') fetchApiKeys();
 });
 
 // ==============================
@@ -916,6 +995,64 @@ const removeRecord = async (item) => {
   } catch(e) {
     console.error("Erro delete", e);
   }
+};
+
+// ==============================
+// API Keys CRUD
+// ==============================
+const apiKeys = ref([]);
+const loadingKeys = ref(false);
+const novaChaveGerada = ref(null);
+const novaKey = ref({ nome: '', permissoes: ['fila:read', 'fila:write'] });
+const permissoesDisponiveis = [
+  { value: 'fila:read', label: 'Fila: Leitura' },
+  { value: 'fila:write', label: 'Fila: Gerar Senhas' },
+  { value: 'atendimento:write', label: 'Atendimento: Chamar/Finalizar' },
+  { value: 'admin:full', label: 'Admin: Acesso Total' },
+];
+
+const fetchApiKeys = async () => {
+  loadingKeys.value = true;
+  try {
+    const res = await fetch(API_BASE + '/admin/api-keys');
+    if (res.ok) apiKeys.value = await res.json();
+  } finally {
+    loadingKeys.value = false;
+  }
+};
+
+const criarApiKey = async () => {
+  if (!novaKey.value.nome) return;
+  try {
+    const res = await fetch(API_BASE + '/admin/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novaKey.value)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      novaChaveGerada.value = data.chave;  // exibida apenas esta vez
+      novaKey.value = { nome: '', permissoes: ['fila:read', 'fila:write'] };
+      await fetchApiKeys();
+    }
+  } catch(e) { console.error(e); }
+};
+
+const revogarKey = async (id) => {
+  if (!confirm('Revogar esta API Key?')) return;
+  await fetch(`${API_BASE}/admin/api-keys/${id}/revogar`, { method: 'DELETE' });
+  await fetchApiKeys();
+};
+
+const reativarKey = async (id) => {
+  await fetch(`${API_BASE}/admin/api-keys/${id}/reativar`, { method: 'POST' });
+  await fetchApiKeys();
+};
+
+const togglePermissao = (perm) => {
+  const idx = novaKey.value.permissoes.indexOf(perm);
+  if (idx === -1) novaKey.value.permissoes.push(perm);
+  else novaKey.value.permissoes.splice(idx, 1);
 };
 
 const zerarSenhas = async () => {
